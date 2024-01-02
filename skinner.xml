@@ -15,6 +15,7 @@
    date_written="2022-01-31 19:06:12"
    requires="5.07"
    version="1.0"
+   save_state="y"
    >
 
 <description trim="n">
@@ -79,7 +80,7 @@
   
    <trigger
    enabled="y"
-   match="^You craft the .* further into: \(\(?(?<bloot>[A-Za-z]+)\)?\)\s(?<item>.*)\.$"
+   match="^You craft the .* further into: \((?<bloot>[A-Za-z]+)\)\s(?<item>.*)\.$"
    regexp="y"
    keep_evaluating="y"
    omit_from_output="n"
@@ -202,7 +203,8 @@ end
 
 -- Default Skin Type = "Cloak"
 if (GetVariable("ks_skintype") ~= nil) then
-	skitype = GetVariable("ks_skintype")
+--	skitype = GetVariable("ks_skintype")
+	skintype = GetVariable("ks_skintype")
 else
 	SetVariable("ks_skintype", "cloak")
 	skintype = "cloak"
@@ -279,6 +281,7 @@ end
 -- Start the capture of the config output
 function startCapture(name, line, args)
 	EnableTriggerGroup("skinnergroup", true)
+	numcorpse=0
 end
 
 -- End the capture of the config output
@@ -351,42 +354,49 @@ end
 function changeType(name,line,args)
 	skintype = args.type
 	ColourNote("#0152a1","","[Skinner]: Type changed to " .. skintype)
+	SetVariable("ks_skintype",skintype)
 end
 
 -- Set auto-preserve
 function autoPreserve(name,line,args)
 	preserve = string.lower(args.type)
 	ColourNote("#0152a1","","[Skinner]: Auto-Preserve changed to " .. preserve)
+	SetVariable("ks_preserve",preserve)
 end
 
 -- Set auto-drop
 function autoDrop(name,line,args)
 	throwAway = string.lower(args.type)
 	ColourNote("#0152a1","","[Skinner]: Auto-Drop changed to " .. throwAway)
+	SetVariable("ks_throwaway",throwAway)
 end
 
 -- Set auto-bag
 function autoBag(name,line,args)
 	autobagger = string.lower(args.type)
 	ColourNote("#0152a1","","[Skinner]: Auto-Bag changed to " .. autobagger)
+	SetVariable("ks_autobag",autobagger)
 end
 
 -- Set bagname
 function setBag(name,line,args)
 	thebag = string.lower(args.type)
 	ColourNote("#0152a1","","[Skinner]: Storage Bag changed to " .. thebag)
+	SetVariable("ks_bag", thebag)
 end
 
 -- Turn skinner on
 function enableSkinner()
 	enabled = "yes"
 	ColourNote("#0152a1","","[Skinner]: Skinner enabled")
+	SetVariable("ks_enabled",enabled)
 end	
 
 -- Turn skinner off
 function disableSkinner()
 	enabled = "no"
 	ColourNote("#0152a1","","[Skinner]: Skinner disabled")
+	SetVariable("ks_enabled",enabled)
 end
 
 -- Show skinner status
@@ -527,4 +537,3 @@ end
 </script>
 
 </muclient>
-
