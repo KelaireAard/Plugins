@@ -271,7 +271,10 @@
 <script>
 
 <![CDATA[
-require "gmcphelper"
+require("wait")
+require("async")
+json = require("json")
+require("gmcphelper")
 local groupName = nil
 
 -- Set the alias name for the leaders epic text alias
