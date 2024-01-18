@@ -248,6 +248,24 @@
    sequence="100"
   >
   </alias>
+  <alias
+   match="oc reload"
+   enabled="y"
+   script="reload_plugin"
+   sequence="100"
+  />
+  <alias
+   match="oc update check"
+   enabled="y"
+   script="update_check_alias"
+   sequence="100"
+  />
+  <alias
+   match="oc update install"
+   enabled="y"
+   script="update_install_alias"
+   sequence="100"
+  />
 </aliases>
 
 <script>
