@@ -15,7 +15,7 @@
    save_state="y"
    date_written="2022-01-19 10:28:38"
    requires="5.06"
-   version="3.0"
+   version="3.1"
    >
 
 </plugin>
@@ -249,6 +249,15 @@
   >
   </alias>
   <alias
+   match="^oc reset$"
+   enabled="y"
+   regexp="y"
+   group="OCAlias"
+   script="reset"
+   sequence="100"
+  >
+  </alias>
+  <alias
    match="oc reload"
    enabled="y"
    script="reload_plugin"
@@ -302,6 +311,7 @@ function setMobName(name, line, args)
 	newMob = string.upper(args.mobname)
 	SetVariable("oc_mob_name", newMob)
 	ColourNote("Green","","OCPlugin NOTICE: OC Door Mob set to: ".. newMob)
+	ColourNote("Green","","OCPlugin NOTICE: Door Mob changes DO NOT take effect immediately. To change group name use oc reset")
 	SaveState()
 end
 
@@ -603,6 +613,13 @@ end
 function setPath(name, line, args)
 	newDirs = string.upper(args.dirs)
 	groupName = "@W" .. getMobName() .. ":EDNDS:@Y" .. newDirs
+	Execute("group rename " .. groupName)
+end
+
+function reset(name, line, args)
+    groupName = get_info_groupname()
+	firstMob = string.sub(groupName,string.len(string.match(groupName,"@W[%w]+"))+1)
+	groupName = getMobName() .. firstMob
 	Execute("group rename " .. groupName)
 end
 
