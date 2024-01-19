@@ -623,7 +623,7 @@ function reset(name, line, args)
 	firstMob = string.sub(groupName, stringLength + 2)
 	ColourNote("Green","","OCPlugin NOTICE: Current Path: " .. firstMob)
 	groupName = getMobName() .. firstMob
-	Execute("group rename @W" .. groupName .. ":")
+	Execute("group rename @W" .. groupName)
 end
 
 
