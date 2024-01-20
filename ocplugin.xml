@@ -15,7 +15,7 @@
    save_state="y"
    date_written="2022-01-19 10:28:38"
    requires="5.06"
-   version="3.62"
+   version="3.63"
    >
 
 </plugin>
@@ -620,7 +620,7 @@ function pathOC(name, line, args)
 	
 	for token in string.gmatch(groupName, "[^:]+") do
 		if i == 1 then
-			pathString = "@Wc underwater;; c door " .. token
+			pathString = "@Wc underwater;; c true;; c door " .. token
 			i = i + 1
 		elseif i == 2 then
 			pathString = pathString .. ";; run " .. token
