@@ -15,7 +15,7 @@
    save_state="y"
    date_written="2022-01-19 10:28:38"
    requires="5.06"
-   version="3.61"
+   version="3.62"
    >
 
 </plugin>
@@ -415,7 +415,7 @@ function startOC()
 	if groupLeader == "" then
 		groupName = "@W" .. getMobName() .. ":EDNDS:@Y"
 		Execute("group create " .. getMobName() .. ":ED - Pick a side!")
-		--Execute("teb broadcast oc")
+		Execute("teb broadcast oc")
 		ColourNote("Green","","OCPlugin NOTICE: Enabling OC Trigger Group.")
 		EnableTriggerGroup ("OC", true)
 		ColourNote("Green","","OCPlugin NOTICE: Enabling Auto-Inviter.")
@@ -425,7 +425,7 @@ function startOC()
 	elseif groupLeader == gmcp("char.base.name") then
 		groupName = "@W" .. getMobName() .. ":EDNDS:@Y"
 		Execute("group rename " .. getMobName() .. ":ED - Pick a side!")
-		--Execute("teb broadcast oc")
+		Execute("teb broadcast oc")
 		ColourNote("Green","","OCPlugin NOTICE: Enabling OC Trigger Group.")
 		EnableTriggerGroup ("OC", true)
 		ColourNote("Green","","OCPlugin NOTICE: Enabling Auto-Inviter.")
