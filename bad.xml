@@ -69,6 +69,8 @@
 
 require "serialize"
 require "gmcphelper"
+require "wait"
+require "async"
 
 local mobList = {
   ["talon"] = "Talon, the Glorious One",
