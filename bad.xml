@@ -13,7 +13,7 @@
    purpose="Boss Aim Detection"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.0"
+   version="1.1"
    >
 
  <description trim="n">
@@ -140,10 +140,10 @@ end
 ----------------------- Plugin Update Code -----------------------
 -- Code taken from Durel's dinv plugin, originally via Crowley
 
-plugin_url = "https://raw.githubusercontent.com/KelaireAard/Plugins/main/ocplugin.xml"
+plugin_url = "https://raw.githubusercontent.com/KelaireAard/Plugins/main/bad.xml"
 SetVariable("DownloadURL", plugin_url)
 plugin_protocol = "HTTPS"
-plugin_prefix = "[OCPlugin]"
+plugin_prefix = "[BAD]"
 
 function update_check_alias()
     update_plugin("check")
