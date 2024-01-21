@@ -38,6 +38,7 @@
 	<alias script="reload_plugin" match="bad reload" enabled="y" sequence="100" ignore_case="y"></alias>
 	<alias script="update_check_alias" match="bad update check" enabled="y" sequence="100" ignore_case="y"></alias>
 	<alias script="update_install_alias" match="bad update install" enabled="y" sequence="100" ignore_case="y"></alias>
+	<alias script="showHelp" match="^bad help$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
 </aliases>
 
 <timers>
@@ -55,7 +56,7 @@
 		enabled="n"
 		group="LookBAD"
 		name="capturePlayers"
-		match="^\(P(layer)?\)(\(H(idden)?\))?(\(T(ranslucent)?\))?(\(R(ed Aura)?\))?(\(W(hite Aura)?\))?\s(\(OPK\))?\s?(?<player>[A-Za-z]+)(?<title>.*)\s?is fighting\s(?<mobName>.*)\.$"
+		match="^\(P(layer)?\)(\(H(idden)?\))?(\(T(ranslucent)?\))?(\(R(ed Aura)?\))?(\(G(olden Aura)?\))?(\(W(hite Aura)?\))?\s(\(OPK\))?\s?(?<player>[A-Za-z]+)(?<title>.*)\s?is fighting\s(?<mobName>.*)\.$"
 		regexp="y"
 		script="addPlayer"
 		sequence="100"
@@ -76,10 +77,19 @@ local mobList = {
   ["talon"] = "Talon, the Glorious One",
   ["sand"] = "blizzard of sand",
   ["genie"] = "Dark Genie General",
+  ["shade"] = "Shade",
 }
 local playerList = ""
 local currentMob = "a know-it-all tier"
 local messageStart = "The following players are attacking "
+
+function showHelp(name, line, args)
+	ColourNote("Green","","bad check - Checks who is attacking your mob")
+	ColourNote("Green","","bad set mobname - Sets to a pre-defined mob")
+	ColourNote("Green","","bad list - Lists pre-defined mobs")
+	ColourNote("Green","","bad custom mobstring - Sets to a specific mob not on the list")
+	ColourNote("Green","","bad help - shows this")
+end
 
 function startCapture(name, line, args)
 	EnableTimer("ExpireLook", true)
@@ -242,3 +252,4 @@ end
 
 
 </muclient>
+
