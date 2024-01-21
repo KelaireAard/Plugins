@@ -55,7 +55,7 @@
 		enabled="n"
 		group="LookBAD"
 		name="capturePlayers"
-		match="^\(P\)(\(R\))?(\(T\))?(\(W\))?\s(\(OPK\))?\s?(?<player>[A-Za-z]+)(?<title>.*)\s?is fighting\s(?<mobName>.*)\.$"
+		match="^\(P(layer)?\)(\(H(idden)?\))?(\(T(ranslucent)?\))?(\(R(ed Aura)?\))?(\(W(hite Aura)?\))?\s(\(OPK\))?\s?(?<player>[A-Za-z]+)(?<title>.*)\s?is fighting\s(?<mobName>.*)\.$"
 		regexp="y"
 		script="addPlayer"
 		sequence="100"
