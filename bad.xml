@@ -13,7 +13,7 @@
    purpose="Boss Aim Detection"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.1"
+   version="1.2"
    >
 
  <description trim="n">
@@ -56,7 +56,7 @@
 		enabled="n"
 		group="LookBAD"
 		name="capturePlayers"
-		match="^\(P(layer)?\)(\(H(idden)?\))?(\(T(ranslucent)?\))?(\(R(ed Aura)?\))?(\(G(olden Aura)?\))?(\(W(hite Aura)?\))?\s(\(OPK\))?\s?(?<player>[A-Za-z]+)(?<title>.*)\s?is fighting\s(?<mobName>.*)\.$"
+		match="^\(P(layer)?\)(\(H(idden)?\))?(\(T(ranslucent)?\))?(\(R(ed Aura)?\))?(\(G(olden Aura)?\))?(\(W(hite Aura)?\))?\s(\(OPK\))?\s?(?<player>[A-Za-z]+)(?<title>.*)\s?is fighting\s(?<mobName>.*)(\.|\!)$"
 		regexp="y"
 		script="addPlayer"
 		sequence="100"
