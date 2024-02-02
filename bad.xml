@@ -13,7 +13,7 @@
    purpose="Boss Aim Detection"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.2"
+   version="1.21"
    >
 
  <description trim="n">
@@ -78,6 +78,7 @@ local mobList = {
   ["sand"] = "blizzard of sand",
   ["genie"] = "Dark Genie General",
   ["shade"] = "Shade",
+  ["death"] = "Death",
 }
 local playerList = ""
 local currentMob = "a know-it-all tier"
