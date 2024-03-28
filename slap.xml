@@ -1,0 +1,678 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+<!-- Saved on Tuesday, April 17, 2022, 10:48 AM -->
+<!-- MuClient version 5.07-pre -->
+
+
+<muclient>
+<plugin
+   name="sletch_plugin_leveling_areas"
+   author="Kelaire"
+   id="e9c3c9ccf93aaccd6aa7dabc"
+   language="Lua"
+   purpose="Sletch: The Plugin aka SLAP!"
+   save_state="y"
+   date_written="2022-04-17 10:48:04"
+   requires="5.07"
+   version="1.01"
+   >
+</plugin>
+
+
+<!--  Triggers  -->
+
+<triggers>
+  <trigger
+    match="^You raise a level! You are now level (?<level>\d+)\.$"
+	regexp="y"
+	keep_evaluating="y"
+	enabled="y"
+	script="slapLevelUp"
+	name="spautotrigger"
+  >
+  </trigger>
+</triggers>
+
+<!--  Aliases  -->
+
+<aliases>
+  <alias
+	match="^slap create\s?(?<confirm>CONFIRM)?$"
+	enabled="y"
+	regexp="y"
+	script="create_initial_table"
+	ignore_case="y"
+	sequence="1"
+  >
+  </alias>
+  <alias
+	match="^slap list\s?(?<sortby>max|min)?$"
+	enabled="y"
+	regexp="y"
+	script="slap_list_all"
+	sequence="1"
+  >
+  </alias>
+  <alias
+	match="^slap list (?<minlevel>\d+)\s*(?<maxlevel>\d*)"
+	enabled="y"
+	regexp="y"
+	script="slap_list"
+	sequence="2"
+  >
+  </alias>
+  <alias
+  	match="^slap find (?<query>.*)"
+	enabled="y"
+	regexp="y"
+	script="slap_find"
+	sequence="1"
+  >
+  </alias>
+  <alias
+	match="^slap help$"
+	enabled="y"
+	regexp="y"
+	script="help"
+	sequence="1"
+  >
+  </alias>
+  <alias
+	match="^slap add (?<area>\w+)\s?(?<align>G|N|E|g|n|e)?\s+(?<minlevel>\d+)\s+(?<maxlevel>\d+)\s?(?<note>.*)?$"
+	enabled="y"
+	regexp="y"
+	script="slap_add"
+	sequence="1"
+  >
+  </alias>
+   <alias
+	match="^slap rem (?<index>\d+)"
+	enabled="y"
+	regexp="y"
+	script="slap_rem"
+	sequence="1"
+  >
+  </alias>
+   <alias
+	match="^slap edit (?<index>\w+)\s?(?<align>G|N|E|g|n|e)?\s+(?<min>\d+)\s+(?<max>\d+)\s?(?<note>.*)?$"
+	enabled="y"
+	regexp="y"
+	script="slap_edit"
+	sequence="1"
+  >
+  </alias>
+  <alias
+    match="^(slap refresh|slapout)\s?(?<align>G|N|E|g|n|e)?$"
+	enabled="y"
+	regexp="y"
+	script="drawWin"
+	sequence="1"
+   >
+   </alias>
+   <alias
+	match="^(slap refresh|slapout) (?<minlevel>\d+)\s?(?<maxlevel>\d+)?\s?(?<align>G|N|E|g|n|e)?"
+	enabled="y"
+	regexp="y"
+	script="drawWin"
+	sequence="2"
+  >
+  </alias>
+  <alias
+    match="^slap reindex$"
+	enabled="y"
+	regexp="y"
+	script="sp_reindex"
+	sequence="1"
+   >
+   </alias>
+   <alias
+    match="^slap hide$"
+	enabled="y"
+	regexp="y"
+	script="hideslap"
+	sequence="1"
+   >
+   </alias>
+  <alias
+    match="^slap show$"
+	enabled="y"
+	regexp="y"
+	script="showslap"
+	sequence="1"
+   >
+   </alias>
+   <alias
+     match="^slap toggle (?<toggle>on|off)$"
+	 enabled="y"
+	 regexp="y"
+	 script="sp_auto_toggle"
+	 sequence="1"
+   >
+   </alias>
+   <alias
+	 match="^slap debug (?<toggle>on|off)$"
+	 enabled="y"
+	 regexp="y"
+	 script="sp_debug_toggle"
+	 sequence="1"
+   >
+   </alias>
+</aliases>
+
+<include name="constants.lua"/>
+
+<script>
+<![CDATA[
+	require "wait"
+	require "tprint"
+	require "themed_miniwindows"
+	require "gmcphelper"
+	
+	local db = "spazdb"
+	local dbtable = "spazareas"
+	local my_window = ThemedTextWindow("testwindow", 200, 200, 200, 200, "SLAP", "center", false, true, true, false, false, false, false, "Consolas", 9, "Consolas", 9, 1000, 2)
+	local debug = 0
+	
+	local globalmin = 0
+	
+	local settings = {}
+	if (GetVariable("slap_settings") ~= nil) then
+		luastmt = "obj = " .. GetVariable("slap_settings")
+		assert (loadstring (luastmt or "")) ()		
+		settings = obj
+	else
+		settings = defaultSettings 
+	end	
+	
+	-- Process the level up
+	function slapLevelUp(name, line, args)
+		globalmin = args.level
+		ColourNote("#3257A8","","SLAP: You've leveled up!  Refreshing now!")
+		
+		drawWin(name, line, args)
+	end
+	
+	-- Draw the window
+	function drawWin(name, line, args)
+		char = gmcp("char.base")
+		minlevel = args.minlevel or char.level
+		maxlevel = args.maxlevel or minlevel + 10
+		align = args.align or ""
+		
+		if globalmin ~= 0 then 
+			minlevel = globalmin
+			maxlevel = minlevel + 10
+			globalmin = 0
+		end
+		
+		ColourNote("#3257A8","","SLAP: Refreshing with level range of "..minlevel.." to "..maxlevel)
+		
+		if maxlevel == "" then maxlevel = minlevel + 10 end
+		
+		-- Clear the original miniwindow
+		my_window:clear()
+		
+		-- Add a header to thw window, beacause we can
+		textdata = string.format("%-12s", "Area Name") .. "Min Max Note"
+
+		-- Create the query
+		if align == "" or align == nil then
+			query = "SELECT * FROM "..dbtable.." WHERE ("..minlevel.." BETWEEN startlevel AND endlevel) OR ("..maxlevel.." BETWEEN startlevel AND endlevel) OR (startlevel BETWEEN "..minlevel.." AND "..maxlevel..") OR (endlevel BETWEEN "..minlevel.." AND "..maxlevel..") ORDER BY startlevel"
+		else
+			align = align:upper()
+			query = "SELECT * FROM "..dbtable.." WHERE (("..minlevel.." BETWEEN startlevel AND endlevel) OR ("..maxlevel.." BETWEEN startlevel AND endlevel) OR (startlevel BETWEEN "..minlevel.." AND "..maxlevel..") OR (endlevel BETWEEN "..minlevel.." AND "..maxlevel..")) and alignment = \""..align.."\" ORDER BY startlevel"
+		end
+		
+		if debug == 1 then
+			ColourNote("#3257A8","","SLAP DEBUG: "..query)
+		end
+						
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+		-- prepare a query
+		DatabasePrepare (db,query)
+
+		-- find the column names
+		names = DatabaseColumnNames (db)
+
+		-- find how many columns there are
+		cols = DatabaseColumns (db)
+
+		-- step to get the first row
+		rc = DatabaseStep (db)  -- read first row
+
+		-- now loop, displaying each row, and getting the next one
+		while rc == sqlite3.ROW do
+		  
+		  values = DatabaseColumnValues (db)
+
+		  for i = 2, cols do
+			if i == 2 then 
+				areaname = string.sub(values[i],1,12)
+				thedata = string.format("%-12s",areaname)
+			elseif i == 3 or i == 4 then 
+				thedata = thedata .. " @C" .. string.format("%-3s",values[i])
+			elseif i == 5 then 
+				if values[i] == "N" then color = "@D"
+				elseif values[i] == "G" then color = "@Y"
+				elseif values[i] == "E" then color = "@R"
+				end
+			else				
+				thedata = color .. thedata .. "  @W" .. values [i]
+			end
+		  end -- for each column
+		
+		  my_window:add_text(thedata)
+			
+		  rc = DatabaseStep (db)  -- read next row
+		
+		end -- while loop
+
+		-- finished with the statement
+		DatabaseFinalize (db)
+		
+		-- Close the database
+		DatabaseClose(db)
+	end
+	
+	-- Hide the SLAP window
+	function hideslap()
+		my_window:hide()
+	end
+	
+	-- Show the SLAP window
+	function showslap()
+		my_window:show()
+	end
+	
+	-- Create the initial database table
+	function create_initial_table(name, line, args)
+		confirmed = args.confirm
+		
+		if confirmed ~= "" and confirmed ~= nil then confirmed = confirmed:upper() end
+		
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+
+		if confirmed == "CONFIRM" then
+			ColourNote("#3257A8","","SLAP: Creating table 'slapareas'")
+				status = DatabaseExec(db, [[
+					DROP TABLE IF EXISTS spazareas;
+					CREATE TABLE spazareas				(
+						id			INTEGER PRIMARY KEY AUTOINCREMENT,
+						area 		TEXT NOT NULL,
+						startlevel	INTEGER NOT NULL,
+						endlevel	INTEGER NOT NULL,
+						alignment	TEXT,
+						note	 	TEXT);
+				]])
+			ColourNote("blue","",status)
+		elseif confirmed ~= "CONFIRM" then
+			ColourNote("#3257A8", "", "SLAP: Please CONFIRM that you want to initialize the SLAP DB by adding CONFIRM on the end of your command")
+		else
+			ColourNote("#3257A8", "", "SLAP: Invalid command given.")
+		end
+		DatabaseClose(db)
+	
+	end
+	
+	-- List all areas by id
+	function slap_list_all(name, line, args)
+		sortBy = args.sortby
+		
+		if sortBy == "" then sortBy = "id"
+		elseif sortBy == "min" then sortBy = "startlevel"
+		elseif sortBy == "max" then sortBy = "endlevel"
+		end
+					
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+		-- prepare a query
+		DatabasePrepare (db, "SELECT id, area, alignment, startlevel, endlevel, note FROM "..dbtable.." ORDER BY "..sortBy)
+
+		-- find the column names
+		names = DatabaseColumnNames (db)
+
+		-- find how many columns there are
+		cols = DatabaseColumns (db)
+
+		-- step to get the first row
+		rc = DatabaseStep (db)  -- read first row
+		
+		print ("List of SLAP data:")
+
+		-- now loop, displaying each row, and getting the next one
+		while rc == sqlite3.ROW do
+		  
+		  values = DatabaseColumnValues (db)
+
+		  for i = 1, cols do
+			if i == 1 then 
+				thedata = values [i]
+			else
+				thedata = thedata .. " " .. values[i]
+			end
+		  end -- for each column
+		
+		  print (thedata)
+			
+		  rc = DatabaseStep (db)  -- read next row
+		
+		end -- while loop
+
+		-- finished with the statement
+		DatabaseFinalize (db)
+		
+		-- Close the database
+		DatabaseClose(db)
+	end
+	
+	-- List areas within a given level range
+	function slap_list(name, line, args)
+		minlevel = args.minlevel
+		maxlevel = args.maxlevel
+		
+		if maxlevel == "" then 
+			maxlevel = minlevel
+		end
+		
+		-- Create the query
+		query = "SELECT id, area, alignment, startlevel, endlevel, note FROM "..dbtable.." WHERE ("..minlevel.." BETWEEN startlevel AND endlevel) OR ("..maxlevel.." BETWEEN startlevel AND endlevel) OR (startlevel BETWEEN "..minlevel.." AND "..maxlevel..") OR (endlevel BETWEEN "..minlevel.." AND "..maxlevel..") ORDER BY startlevel"
+		if debug == 1 then
+			ColourNote("#3257A8","","SLAP DEBUG: "..query)
+		end
+			
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+		-- prepare a query
+		DatabasePrepare (db,query)
+
+		-- find the column names
+		names = DatabaseColumnNames (db)
+
+		-- find how many columns there are
+		cols = DatabaseColumns (db)
+
+		-- step to get the first row
+		rc = DatabaseStep (db)  -- read first row
+		
+		print ("List of SLAP data:")
+
+		-- now loop, displaying each row, and getting the next one
+		while rc == sqlite3.ROW do
+		  
+		  values = DatabaseColumnValues (db)
+
+		  for i = 1, cols do
+			if i == 1 then 
+				thedata = values [i]
+			else
+				thedata = thedata .. " " .. values[i]
+			end
+		  end -- for each column
+		
+		  print (thedata)
+			
+		  rc = DatabaseStep (db)  -- read next row
+		
+		end -- while loop
+
+		-- finished with the statement
+		DatabaseFinalize (db)
+		
+		-- Close the database
+		DatabaseClose(db)
+	end
+	
+	-- Display a single area based on name or id
+	function slap_find(name, line, args)
+		thedata = args.query
+		
+		if thedata ~= nil and thedata ~= "" then
+			if tonumber(thedata) ~= nil then 
+				field = "id"
+			else
+				field = "area"
+			end
+		else
+			ColourNote("#3257A8","","SLAP: Bad find option")
+			return
+		end
+		
+		if maxlevel == "" then 
+			maxlevel = minlevel
+		end
+
+		-- Create the query
+		query = "SELECT id, area, alignment, startlevel, endlevel, note FROM "..dbtable.." WHERE "..field.." = \""..thedata.."\""
+		if debug == 1 then
+			ColourNote("#3257A8","","SLAP DEBUG: "..query)
+		end
+			
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+		-- prepare a query
+		DatabasePrepare (db,query)
+
+		-- find the column names
+		names = DatabaseColumnNames (db)
+
+		-- find how many columns there are
+		cols = DatabaseColumns (db)
+
+		-- step to get the first row
+		rc = DatabaseStep (db)  -- read first row
+		
+		print ("List of SLAP data:")
+
+		-- now loop, displaying each row, and getting the next one
+		while rc == sqlite3.ROW do
+		  
+		  values = DatabaseColumnValues (db)
+
+		  for i = 1, cols do
+			if i == 1 then 
+				thedata = values [i]
+			else
+				thedata = thedata .. " " .. values[i]
+			end
+		  end -- for each column
+		
+		  print (thedata)
+			
+		  rc = DatabaseStep (db)  -- read next row
+		
+		end -- while loop
+
+		-- finished with the statement
+		DatabaseFinalize (db)
+		
+		-- Close the database
+		DatabaseClose(db)
+	end
+	
+	-- Add a new area
+	function slap_add(name, line, args)
+		newarea = args.area
+		newalign = args.align
+		newminlevel = args.minlevel
+		newmaxlevel = args.maxlevel
+		thenote = args.note
+
+		newnote = thenote:gsub("'","")
+		newalign = newalign:upper()
+		
+		if newalign == "" then newalign = "N" end
+		
+		query = "INSERT INTO "..dbtable.." (area, alignment, startlevel, endlevel, note) VALUES ('"..newarea.."', '"..newalign.."', "..newminlevel..", "..newmaxlevel..", '"..newnote.."')"
+		if debug == 1 then
+			ColourNote("#3257A8","","SLAP DEBUG: "..query)
+		end
+		
+		ColourNote("#3257A8","","SLAP: Area "..newarea.." successfully added.")
+		
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+		status=DatabaseExec (db, query)
+		ColourNote("red","",status)
+		DatabaseClose(db)
+	end
+	
+	-- Remove an area by index
+	function slap_rem(name, line, args)
+		indextoremove = args.index
+		
+		query = "DELETE FROM "..dbtable.." WHERE id="..indextoremove..";"
+		if debug == 1 then
+			ColourNote("#3257A8","","SLAP DEBUG: "..query)
+		end
+		
+		ColourNote("#3257A8","","SLAP: Area at index "..indextoremove.." successfully removed.")
+		
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+		status=DatabaseExec (db, query)
+		ColourNote("red","",status)
+		DatabaseClose(db)
+	end
+	
+	-- Edit an existing area
+	function slap_edit(name, line, args)
+		indextoedit = args.index
+		newminlevel = args.min
+		newmaxlevel = args.max
+		newalign = args.align
+		newnote = args.note
+		
+		newalign = newalign:upper()
+		
+		query = "UPDATE  "..dbtable.." SET startlevel="..newminlevel..", endlevel="..newmaxlevel..", note='"..newnote.."', alignment='"..newalign.."' WHERE ID="..indextoedit
+		
+		if debug == 1 then
+			ColourNote("#3257A8","","SLAP DEBUG: "..query)
+		end
+		
+		ColourNote("#3257A8","","SLAP: Area at index "..indextoedit.." successfully edited.")
+		
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+		status=DatabaseExec (db, query)
+		ColourNote("red","",status)
+		DatabaseClose(db)
+	end
+	
+	-- Hopefully this will reindex the database.  Sletch is picky.  No one reads this stuff....
+	function sp_reindex()
+		DatabaseOpen(db, GetInfo(66) .. "spazdb.sqlite", 6)
+		
+		ColourNote("#3257A8","","SLAP: Reindexing table 'slapareas'")
+				status = DatabaseExec(db, [[
+					-- Make sure our temp old table doesn't exist
+					DROP TABLE IF EXISTS _spazareas_old;
+					
+					-- Rename current table to _old
+					ALTER TABLE spazareas RENAME TO _spazareas_old;
+					
+					-- Recreate the table - This will reset the index
+					CREATE TABLE spazareas				(
+						id			INTEGER PRIMARY KEY AUTOINCREMENT,
+						area 		TEXT NOT NULL,
+						startlevel	INTEGER NOT NULL,
+						endlevel	INTEGER NOT NULL,
+						alignment	TEXT,
+						note	 	TEXT);
+						
+					-- Add all of our data back in
+					INSERT INTO spazareas(area, startlevel, endlevel, alignment, note)
+					    SELECT area, startlevel, endlevel, alignment, note
+						FROM _spazareas_old;
+						
+					-- Commit...do I have to do this?
+					COMMIT;
+					
+					-- Get rid of the temporary old table
+					DROP TABLE _spazareas_old;
+				]])
+			ColourNote("blue","",status)
+	end
+	
+	-- Toggle the automatic refresh on level up
+	function sp_auto_toggle(name, line, args)
+		toggleswitch = args.toggle
+		
+		toggleswitch = toggleswitch:lower()
+		
+		if toggleswitch == "on" then
+			EnableTrigger("spautotrigger", true)
+			ColourNote("#3257A8","","SLAP: Auto-refresh on level up is now ON")
+		elseif toggleswitch == "off" then
+			EnableTrigger("spautotrigger", false)
+			ColourNote("#3257A8","","SLAP: Auto-refresh on level up is now OFF")
+		else
+			ColourNote("#3257A8","","SLAP: Invalid Option on Toggle!  On/Off accepted.")
+		end
+	end
+
+	-- Toggle the automatic refresh on level up
+	function sp_debug_toggle(name, line, args)
+		toggleswitch = args.toggle
+		
+		toggleswitch = toggleswitch:lower()
+		
+		if toggleswitch == "on" then
+			debug=1
+			ColourNote("#3257A8","","SLAP: DEBUG MODE is now ON")
+		elseif toggleswitch == "off" then
+			debug=0
+			ColourNote("#3257A8","","SLAP: DEBUG MODE is now OFF")
+		else
+			ColourNote("#3257A8","","SLAP: Invalid Option on Toggle!  On/Off accepted.")
+		end
+	end
+
+	-- Display the help
+	function help()
+		heading = "Sletch's Leveling Area Plugin"
+		headingLength = string.len(heading)
+		spacingLeft = (78 - headingLength)	 / 2
+		if spacingLeft % 2 == 1 then 
+			spacingRight = spacingLeft + 1 
+		else 
+			spacingRight = spacingLeft 
+		end		
+		
+		Note()
+		ColourNote("#4D5355", "", string.rep("-", 80))
+		ColourNote("#FBFF00", "", string.rep(" ",spacingLeft).."[", "#3257A8", "", heading, "#FBFF00", "", "]"..string.rep(" ",spacingRight))
+		ColourNote("#4D5355", "", string.rep("-", 80))
+		ColourNote("#C40092", "", "This plugin will do the things that Sletch asked for it to do!")
+		ColourNote("white", "", "")		
+		ColourNote("#C40092", "", "The following are the commands:")		
+		ColourNote("white", "", "")
+		ColourNote("#05909A", "", "slap create", "#36C400" , "", " - This initializes the database.  Run before first use!")
+		ColourNote("#05909A", "", "slap list", "#36C400", "", " - This will list ALL areas by index")		
+		ColourNote("#05909A", "", "slap list <x>", "#36C400", "", " - This will list ALL areas within the given level by start level")
+		ColourNote("#05909A", "", "slap list <x> <y>", "#36C400", "", " - This will list ALL areas within the given level range by start level")
+		ColourNote("#05909A", "", "slap find <index|area>", "#36C400", "", " - This will display an area at a given index or with a given name")
+		ColourNote("#05909A", "", "slap add <area> <G|N|E> <minlevel> <maxlevel> <note>", "#36C400", "", " - This will add a new area to the database")
+		ColourNote("#05909A", "", "slap edit <index> <G|N|E> <minlevel> <maxlevel> <note>", "#36C400", "", " - This will edit an area at the index")
+		ColourNote("#05909A", "", "slap rem <index>", "#36C400", "", " - This will remove the area from your list (at a given index)")
+		ColourNote("#05909A", "", "slap reindex", "#36C400", "", " - This will reindex the table - useful if you have odd and large gaps.")
+		ColourNote("white", "", "")
+		ColourNote("#C40092", "", "Miniwindow related commands:")		
+		ColourNote("white", "", "")
+		ColourNote("#05909A", "", "slap refresh", "#36C400", "", " - This will list areas within 10 levels of your current level")		
+		ColourNote("#05909A", "", "slap refresh <x>", "#36C400", "", " - This will list areas within 10 levels of the specified level")
+		ColourNote("#05909A", "", "slap refresh <x> <y> <G|N|E>", "#36C400", "", " - This will list areas within y levels of the specified level")
+		ColourNote("#36C400", "", "                                                  You can specify only a certain align for this command.")
+		ColourNote("#05909A", "", "slap show", "#36C400", "", " - This will show the SLAP window")		
+		ColourNote("#05909A", "", "slap hide", "#36C400", "", " - This will hide the SLAP window")	
+		ColourNote("#05909A", "", "slap toggle <on|off>", "#36C400", "", " - This will toggle auto-refresh on level up")
+		ColourNote("white", "", "")
+		ColourNote("#C40092", "", "Example commands:")		
+		ColourNote("white", "", "")
+		ColourNote("#05909A", "", "slap list 1 201", "#36C400", "", " - This will list all areas between 1 and 201")		
+		ColourNote("#05909A", "", "slap add kimr G 1 5 Test Entry", "#36C400", "", " - This will add Kimr as an area, flagged GOOD between 1 and 5")	
+		ColourNote("#36C400", "", "                                                    with a note of 'Test Entry'")
+		ColourNote("#05909A", "", "slap rem 1", "#36C400", "", " - This will remove the entry at index 1.")
+		ColourNote("#05909A", "", "slap find 1", "#36C400", "", " - This will display the entry at index 1.")
+		ColourNote("#05909A", "", "slap find kimr", "#36C400", "", " - This will display the entry/entries of area name kimr.")
+		ColourNote("#4D5355", "", string.rep("-", 80))
+		Note()
+	end
+	]]>
+</script>
+
+</muclient>
