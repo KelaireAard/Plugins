@@ -256,6 +256,10 @@ function OnPluginInstall(msg, id, name, text)
 	end
 end
 
+function OnPluginSaveState()
+	SetVariable("ks_data", serialize.save_simple(data)) --worky?
+end
+
 function OnPluginBroadcast(msg, id, name, text)
 	if (id == '3e7dedbe37e44942dd46d264') then
 		if (text == "char.status") then
