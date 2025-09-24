@@ -13,7 +13,7 @@
    purpose="WIMP – Warrior Index and Metrics Parser"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.4"
+   version="1.5"
    >
 
  <description trim="n">
@@ -439,7 +439,6 @@ function showHelp()
 	ColourNote("green", "", "wimp detail", "white", "", " - Displays the table of data")
 	ColourNote("green", "", "wimp report", "white", "", " - Send info to gt")	
 	ColourNote("white", "", "")
-	ColourNote("green", "", "THESE DONT WORK YET HOLD YOUR HORSES")
 	ColourNote("green", "", "wimp update check", "white", "", " - Check for an updated version")
 	ColourNote("green", "", "wimp update install", "white", "", " - Install latest version")
 	ColourNote("green", "", "wimp reload", "white", "", " - reload plugin")
@@ -550,5 +549,6 @@ end
 
 
 </muclient>
+
 
 
