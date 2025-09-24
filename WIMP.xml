@@ -36,6 +36,9 @@
 	<alias script="reportPowerLevel" match="^wimp report$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
 	<alias script="print_players" match="^wimp detail(s?)$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
 	<alias script="showHelp" match="^wimp help$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
+	<alias script="reload_plugin" match="wimp reload" enabled="y" sequence="100" ignore_case="y"></alias>
+	<alias script="update_check_alias" match="wimp update check" enabled="y" sequence="100" ignore_case="y"></alias>
+	<alias script="update_install_alias" match="wimp update install" enabled="y" sequence="100" ignore_case="y"></alias>
 </aliases>
 
 <triggers>
