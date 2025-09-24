@@ -121,6 +121,7 @@
   <trigger
 		enabled="y"
 		name="endSubCapture"
+		group="WIMPCheck"
 		match="^Players found: \[\d+\]\, Max this reboot\: \[\d+\]\, Connections this reboot\: \[\d+\]$"
 		regexp="y"
 		script="endSubCapture"
@@ -186,7 +187,6 @@ function startCapture()
   EnableTimer("ExpireCommand", true)
   ResetTimer("ExpireCommand")
   EnableTriggerGroup("WIMPCheck", true)
-  ColourNote("red","","Start")
   groupPower = 0
   playerCount = 0
 end
@@ -194,13 +194,11 @@ end
 function endCapture()
   EnableTimer("ExpireCommand", false)
   EnableTriggerGroup("WIMPCheck", false)
-  ColourNote("red","","End")
   calculateEPL()
   print_players()
 end
 
 function endSubCapture()
-  ColourNote("red","","End Sub")
   EnableTrigger("captureQP", false)
   EnableTrigger("capturePup", false)
   EnableTrigger("captureStat", false)
@@ -209,22 +207,18 @@ end
 
 function enableQPCheck()
   EnableTrigger("captureQP", true)
-  ColourNote("red","","QP Capture")
 end
 
 function enablePupCheck()
   EnableTrigger("capturePup", true)
-  ColourNote("red","","PUP Capture")
 end
 
 function enableStatCheck()
   EnableTrigger("captureStat", true)
-  ColourNote("red","","Stat Capture")
 end
 
 function enableLevelCheck()
   EnableTrigger("captureLevel", true)
-  ColourNote("red","","Level Capture")
 end
 
 -- Shared helpers
