@@ -450,7 +450,7 @@ end
 ----------------------- Plugin Update Code -----------------------
 -- Code taken from Durel's dinv plugin, originally via Crowley
 
-plugin_url = "https://raw.githubusercontent.com/KelaireAard/Plugins/main/bad.xml"
+plugin_url = "https://raw.githubusercontent.com/KelaireAard/Plugins/refs/heads/main/WIMP.xml"
 SetVariable("DownloadURL", plugin_url)
 plugin_protocol = "HTTPS"
 plugin_prefix = "[BAD]"
