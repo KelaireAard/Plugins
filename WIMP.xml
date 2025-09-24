@@ -1,0 +1,551 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+<!-- Saved on Sunday, February 06, 2022, 12:34 PM -->
+<!-- MuClient version 5.07-pre -->
+
+
+<muclient>
+<plugin
+   name="WIMP"
+   author="Kelaire"
+   id="314f356e3b6cba4efbf7baf9"
+   language="Lua"
+   purpose="WIMP – Warrior Index and Metrics Parser"
+   date_written="2024-01-20"
+   requires="5.07"
+   version="1.4"
+   >
+
+ <description trim="n">
+<![CDATA[
+.----------------------------------------------------------------------------.
+|                                                                            |
+|----------------------------------------------------------------------------|
+|                                                                            |
+'----------------------------------------------------------------------------'
+]]>
+</description>
+
+</plugin>
+
+<!--  Aliases  -->
+
+<aliases>
+	<alias script="sendCommands" match="^wimp check$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
+	<alias script="groupPowerLevel" match="^wimp total$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
+	<alias script="reportPowerLevel" match="^wimp report$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
+	<alias script="print_players" match="^wimp detail(s?)$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
+	<alias script="showHelp" match="^wimp help$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
+</aliases>
+
+<triggers>
+	<trigger
+		enabled="n"
+		group="WIMPCheck"
+		name="StatCheckStart"
+		match="^                       Who list sorted by : Total Stats                     $"
+		regexp="y"
+		script="enableStatCheck"
+		sequence="100"
+	>
+  </trigger>
+  <trigger
+		enabled="n"
+		group="WIMPCheck"
+		name="PUPCheckStart"
+		match="^                       Who list sorted by : Total Powerups                  $"
+		regexp="y"
+		script="enablePupCheck"
+		sequence="100"
+	>
+  </trigger>
+  <trigger
+		enabled="n"
+		group="WIMPCheck"
+		name="QPCheckStart"
+		match="^                       Who list sorted by : QP Earned                       $"
+		regexp="y"
+		script="enableQPCheck"
+		sequence="100"
+	>
+  </trigger>
+  <trigger
+		enabled="n"
+		group="WIMPCheck"
+		name="LevelCheckStart"
+		match="^                       Who list sorted by : Total Levels                    $"
+		regexp="y"
+		script="enableLevelCheck"
+		sequence="100"
+	>
+  </trigger>
+  <trigger
+		enabled="n"
+		name="captureStat"
+		match="^\[.*\]\s\[\s+\d+\s\]\s.*$"
+		regexp="y"
+		script="parse_totstats_line"
+		sequence="100"
+	>
+  </trigger>
+  <trigger
+		enabled="n"
+		name="capturePup"
+		match="^\[.*\]\s\[\s+\d+\s\]\s.*$"
+		regexp="y"
+		script="parse_pup_line"
+		sequence="100"
+	>
+  </trigger>
+  <trigger
+		enabled="n"
+		name="captureQP"
+		match="^\[.*\]\s\[\s+\d+\s\]\s.*$"
+		regexp="y"
+		script="parse_qp_line"
+		sequence="100"
+	>
+  </trigger>
+  <trigger
+		enabled="n"
+		name="captureLevel"
+		match="^\[.*\]\s\[\s+\d+\s\]\s.*$"
+		regexp="y"
+		script="parse_level_line"
+		sequence="100"
+	>
+  </trigger>
+  <trigger
+		enabled="y"
+		name="endSubCapture"
+		match="^Players found: \[\d+\]\, Max this reboot\: \[\d+\]\, Connections this reboot\: \[\d+\]$"
+		regexp="y"
+		script="endSubCapture"
+		sequence="100"
+	>
+  </trigger>
+  <!--trigger
+   enabled="y"
+   match="{/WIMPCapture}"
+   regexp="n"
+   script="endCapture"
+   omit_from_output="y"
+   sequence="100"
+  >
+  </trigger-->
+  <trigger
+   enabled="y"
+   match="{WIMPCapture}"
+   regexp="n"
+   script="startCapture"
+   omit_from_output="y"
+   sequence="100"
+  >
+  </trigger>
+</triggers>
+
+<timers>
+	<timer
+		name="ExpireCommand" 
+		second="5" 
+		enabled="n"
+		script="endCapture"
+		>
+	</timer>
+</timers>
+
+<script>
+
+<![CDATA[
+
+require "serialize"
+require "gmcphelper"
+require "wait"
+require "async"
+
+local players = {}
+local name_index = {}
+local groupPower = 0
+local playerCount = 0
+
+function sendCommands()
+  players = {}
+  name_index = {}
+  SendNoEcho("echo {WIMPCapture}")
+  SendNoEcho("swho 8 group")
+  SendNoEcho("swho 12 group")
+  SendNoEcho("swho 14 group")
+  SendNoEcho("swho 9 group")
+  SendNoEcho("echo {/WIMPCapture}")
+end
+
+function startCapture()
+  EnableTimer("ExpireCommand", true)
+  ResetTimer("ExpireCommand")
+  EnableTriggerGroup("WIMPCheck", true)
+  ColourNote("red","","Start")
+  groupPower = 0
+  playerCount = 0
+end
+
+function endCapture()
+  EnableTimer("ExpireCommand", false)
+  EnableTriggerGroup("WIMPCheck", false)
+  ColourNote("red","","End")
+  calculateEPL()
+  print_players()
+end
+
+function endSubCapture()
+  ColourNote("red","","End Sub")
+  EnableTrigger("captureQP", false)
+  EnableTrigger("capturePup", false)
+  EnableTrigger("captureStat", false)
+  EnableTrigger("captureLevel", false)
+end
+
+function enableQPCheck()
+  EnableTrigger("captureQP", true)
+  ColourNote("red","","QP Capture")
+end
+
+function enablePupCheck()
+  EnableTrigger("capturePup", true)
+  ColourNote("red","","PUP Capture")
+end
+
+function enableStatCheck()
+  EnableTrigger("captureStat", true)
+  ColourNote("red","","Stat Capture")
+end
+
+function enableLevelCheck()
+  EnableTrigger("captureLevel", true)
+  ColourNote("red","","Level Capture")
+end
+
+-- Shared helpers
+function trim(s)
+  return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+function strip_tags(s)
+  s = s:gsub("%*AFK%*", "")
+  s = s:gsub("%(OPK%)", "")
+  s = s:gsub("%(HARDCORE%)", "")
+  s = s:gsub("%[Advisor%]", "")
+  s = s:gsub("%[Helper%]", "")
+  return trim(s)
+end
+
+function format_int(number)
+  local i, j, minus, int, fraction = tostring(number):find('([-]?)(%d+)([.]?%d*)')
+
+  -- reverse the int-string and append a comma to all blocks of 3 digits
+  int = int:reverse():gsub("(%d%d%d)", "%1,")
+
+  -- reverse the int-string back remove an optional comma and put the 
+  -- optional minus and fractional part back
+  return minus .. int:reverse():gsub("^,", "") .. fraction
+end
+
+
+-- Allow letters/digits/_/'/- in names
+function extract_name(s)
+  return s:match("([%w_'%-]+)")
+end
+
+-- Get or create a player entry by name
+function get_or_create_player(playerName)
+  local idx = name_index[playerName]
+  if idx then
+    return players[idx]
+  else
+    local p = { playerName = playerName }
+    table.insert(players, p)
+    name_index[playerName] = #players
+    return p
+  end
+end
+
+----------------------------------------------------------------------
+-- 1) Parse QP lines: [TITLE] [ TOTALQP ] PLAYERDATA
+----------------------------------------------------------------------
+function parse_qp_line(name, line, args)
+  local title, qp, pdata = line:match("^%s*%[(.-)%]%s*%[%s*(%d+)%s*%]%s*(.+)$")
+  if not qp or not pdata then return end
+
+  pdata = strip_tags(pdata)
+  local playerName = extract_name(pdata)
+  if not playerName or playerName == "" then return end
+
+  local p = get_or_create_player(playerName)
+  p.title = trim(title)
+  p.total_qp = tonumber(qp)
+  
+end
+
+----------------------------------------------------------------------
+-- 2) Parse PUP lines: [TITLE] [ PUPS ] PLAYERDATA
+----------------------------------------------------------------------
+function parse_pup_line(name, line, args)
+  local title, pups, pdata = line:match("^%s*%[(.-)%]%s*%[%s*(%d+)%s*%]%s*(.+)$")
+  if not title or not pups or not pdata then return end
+
+  pdata = strip_tags(pdata)
+  local playerName = extract_name(pdata)
+  if not playerName or playerName == "" then return end
+
+  local p = get_or_create_player(playerName)
+  p.title = p.title or trim(title)
+  p.pup = tonumber(pups)
+end
+
+----------------------------------------------------------------------
+-- 3) Parse Total Stats lines: [TITLE] [ TOTSTATS ] PLAYERDATA
+----------------------------------------------------------------------
+function parse_totstats_line(name, line, args)
+  local title, stats, pdata = line:match("^%s*%[(.-)%]%s*%[%s*(%d+)%s*%]%s*(.+)$")
+  if not title or not stats or not pdata then return end
+
+  pdata = strip_tags(pdata)
+  local playerName = extract_name(pdata)
+  if not playerName or playerName == "" then return end
+
+  local p = get_or_create_player(playerName)
+  p.title = p.title or trim(title)
+  p.totstats = tonumber(stats)
+end	
+
+----------------------------------------------------------------------
+-- 4) Parse Total Levels lines: [TITLE] [ TOTLEVELS ] PLAYERDATA
+----------------------------------------------------------------------
+function parse_level_line(name, line, args)
+  local title, levels, pdata = line:match("^%s*%[(.-)%]%s*%[%s*(%d+)%s*%]%s*(.+)$")
+  if not title or not levels or not pdata then return end
+
+  pdata = strip_tags(pdata)
+  local playerName = extract_name(pdata)
+  if not playerName or playerName == "" then return end
+
+  local p = get_or_create_player(playerName)
+  p.title = p.title or trim(title)
+  p.totlevels = tonumber(levels)
+end	
+
+function calculateEPL()
+  for i, p in ipairs(players) do
+    -- Fallbacks in case some fields are missing
+    local title    		 = p.title or ""
+    local playerName     = p.playerName or ""
+    local total_qp       = p.total_qp or 0
+    local pup            = p.pup or 0
+    local totstats       = p.totstats or 0
+	local totlevels      = p.totlevels or 0
+	local epicPowerLevel = 0
+	
+	-- Make sure the person is 201....
+	tier = math.floor((totlevels -1) / 1407)
+	mort = math.ceil((((totlevels -1) % 1407) + 1) / 201)
+	currentLevel = totlevels - (1407 * tier) - ((mort-1) * 201)	
+	if not currentLevel == 201 then ColourNote("RED","","Player " .. playerName .. " is not SH!") end
+	
+	if total_qp >= 2000000 then epicPowerLevel = epicPowerLevel + 3
+	elseif total_qp > 1000000 and total_qp < 2000000 then epicPowerLevel = epicPowerLevel + 2
+	elseif total_qp > 500000 and total_qp <= 1000000 then epicPowerLevel = epicPowerLevel + 1
+	end
+	
+	if pup >= 1000000 then epicPowerLevel = epicPowerLevel + 3
+	elseif pup > 500000 and pup < 1000000 then epicPowerLevel = epicPowerLevel + 2
+	elseif pup > 100000 and pup <= 500000 then epicPowerLevel = epicPowerLevel + 1
+	end
+	
+	if totlevels >= 37898 then epicPowerLevel = epicPowerLevel + 3
+	elseif totlevels > 25326 and totlevels < 37898 then epicPowerLevel = epicPowerLevel + 2
+	elseif totlevels > 14070 and totlevels <= 23526 then epicPowerLevel = epicPowerLevel + 1
+	end
+	
+	if totstats >= 2150 then epicPowerLevel = epicPowerLevel + 3
+	elseif totstats > 2050 and totstats < 2150 then epicPowerLevel = epicPowerLevel + 2
+	elseif totstats > 1950 and totstats <= 2050 then epicPowerLevel = epicPowerLevel + 1
+	end
+	
+	if not(mort == 7 or mort == 6) then epicPowerLevel = epicPowerLevel - 1
+	end
+	
+	-- Make it pretty...ish
+	basePowerLevelFormatted = format_int(epicPowerLevel) 
+	
+	--ColourNote("#34ebcf","","Epic Power: " .. epicPowerLevel)
+	
+	if currentLevel == 201 then groupPower = groupPower + epicPowerLevel end
+	if currentLevel == 201 then	playerCount = playerCount + 1 end
+	
+	p.epl = epicPowerLevel
+  end
+end
+
+function print_players()
+  -- Sort by power level
+  table.sort(players, function(a, b)
+    return (a.epl or 0) > (b.epl or 0)
+  end)
+  
+  for i, p in ipairs(players) do
+    -- Fallbacks in case some fields are missing
+    local title    		 = p.title or ""
+    local playerName     = p.playerName or ""
+    local total_qp       = p.total_qp or 0
+    local pup            = p.pup or 0
+    local totstats       = p.totstats or 0
+	local totlevels      = p.totlevels or 0
+	local epicPowerLevel = p.epl
+  
+  	print(string.format(
+      "%2d. %-12s | QP: %-8d | PUP: %-8d | TotStats: %-8d | TotLevels: %-8d | EpicPower: %-2d",
+      i, playerName, total_qp, pup, totstats, totlevels, epicPowerLevel
+    ))
+  end
+end
+
+function groupPowerLevel()
+	ColourNote("#34ebcf","","Total Group Power: " .. format_int(groupPower))
+	ColourNote("#34ebcf","","Total SH in Group: " .. playerCount)
+	ColourNote("#34ebcf","","Average Group Power: " .. format_int(groupPower/playerCount))
+end
+
+function reportPowerLevel()
+    SendNoEcho("gt @x208Total Group Power Level is @x213" .. format_int(groupPower) .. "@x208. Total SHs in Group is @x213" .. playerCount .. "@x208. Average group power is @x213" .. format_int(groupPower/playerCount) .. "@x208.")
+end
+
+-- Helper Function - Tell the user how this shit works!
+function showHelp()
+
+	Note()
+
+	ColourNote("gray", "", string.rep("-", 80))
+	ColourNote("#32a83e", "", "[", "#3254a8", "", "Warrior Index and Metrics Parser", "#32a83e", "", "]")
+	ColourNote("gray", "", string.rep("-", 80))
+	ColourNote("white", "", "This plugin will attempt to give you some idea of group strength for epics.")
+	ColourNote("white", "", "")	
+	ColourNote("white", "", "Strength Meter: 0 - 3 Newb, 4 - 5 Weak, 6 - 8 Average, 9 - 10 Strong, 11 - 12 Big Boy")
+	ColourNote("white", "", "")
+	ColourNote("green", "", "wimp help", "white", "", " - Brings up this help menu")
+	ColourNote("green", "", "wimp check", "white", "", " - Runs the swho commands to gather group data")
+	ColourNote("green", "", "wimp total", "white", "", " - Shows the group total, number and average")
+	ColourNote("green", "", "wimp detail", "white", "", " - Displays the table of data")
+	ColourNote("green", "", "wimp report", "white", "", " - Send info to gt")	
+	ColourNote("white", "", "")
+	ColourNote("green", "", "THESE DONT WORK YET HOLD YOUR HORSES")
+	ColourNote("green", "", "wimp update check", "white", "", " - Check for an updated version")
+	ColourNote("green", "", "wimp update install", "white", "", " - Install latest version")
+	ColourNote("green", "", "wimp reload", "white", "", " - reload plugin")
+	ColourNote("white", "", "")
+	ColourNote("gray", "", string.rep("-", 80))
+
+	Note()
+
+end
+
+----------------------- Plugin Update Code -----------------------
+-- Code taken from Durel's dinv plugin, originally via Crowley
+
+plugin_url = "https://raw.githubusercontent.com/KelaireAard/Plugins/main/bad.xml"
+SetVariable("DownloadURL", plugin_url)
+plugin_protocol = "HTTPS"
+plugin_prefix = "[BAD]"
+
+function update_check_alias()
+    update_plugin("check")
+    ColourNote("white", "", plugin_prefix .. " Checking for updated version...")
+end
+
+function update_install_alias()
+    update_plugin("install")
+    ColourNote("white", "", plugin_prefix .. " Checking for and installing updated version...")
+end
+
+function reload_plugin()
+    local scriptPrefix = GetAlphaOption("script_prefix")
+    local retval
+
+    -- If the user has not already specified the script prefix for this version of mush, pick a
+    -- reasonable default value
+    if (scriptPrefix == "") then
+        scriptPrefix = "\\\\\\"
+        SetAlphaOption("script_prefix", scriptPrefix)
+    end
+
+    -- Tell mush to reload the plugin in one second.  We can't do it directly here because a
+    -- plugin can't unload itself.  Even if it could, how could it tell mush to load it again
+    -- if it weren't installed? 
+    retval = Execute(scriptPrefix.."DoAfterSpecial(0.1, \"ReloadPlugin('"..GetPluginID().."')\", sendto.script)")
+end
+
+function update_plugin(mode)
+    update_mode = mode
+
+    wait.make(get_plugin_file)
+end
+
+function get_plugin_file()
+    local urlThread = async.request(plugin_url, plugin_protocol)
+
+    if not urlThread then
+        note_error("Couldn't create async url request.")
+        return
+    end
+
+    local timeout = 10
+    local totTime = 0
+    while (urlThread:alive() and totTime < timeout) do
+        wait.time(0.1)
+        totTime = totTime + 0.1
+    end
+
+    local remoteRet, pluginData, status, headers, fullStatus = urlThread:join()
+
+    if not status then
+        ColourNote("red", "", plugin_prefix .. " Couldn't download plugin file. No status code.")
+        
+        return
+    end
+
+    if (status ~= 200) then
+        ColourNote("red", "", plugin_prefix .. " Plugin file request status code: " .. status .. ": " .. fullStatus)
+        return
+    end
+    
+    local currentVersion = GetPluginInfo(GetPluginID(), 19) or 0
+    local currentVerStr  = string.format("%1.3f", currentVersion)
+    local remoteVerStr   = string.match(pluginData, '%s%s+version="([0-9%.]+)"')
+    local remoteVersion  = tonumber(remoteVerStr or "") or 0
+
+    if remoteVersion == currentVersion then
+        ColourNote("white", "", plugin_prefix .. " You are running the most recent version (v" .. currentVerStr .. ")")
+    elseif (remoteVersion < currentVersion) then
+        ColourNote("white", "", plugin_prefix .. " You have a newer version than is publicly available. (v" .. currentVerStr .. ")")
+    elseif (update_mode == "check") then
+        ColourNote("white", "", plugin_prefix .. " You are running v" .. currentVerStr .. ", but there's a newer version v" .. remoteVerStr)
+    elseif (update_mode == "install") then
+        ColourNote("white", "", plugin_prefix .. " Updating plugin from version " .. currentVerStr .. " to version " .. remoteVerStr) 
+
+        local pluginFile = GetPluginInfo(GetPluginID(), 6)
+        local file = io.open(pluginFile, "wb")
+        file:write(pluginData)
+        file:close()
+        reload_plugin()
+    else
+        ColourNote("red", "", plugin_prefix .. " Invalid update mode: " .. update_mode)
+    end
+end
+----------------------- End Plugin Update Code -----------------------
+
+]]>
+
+</script>
+
+
+</muclient>
+
+
