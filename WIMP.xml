@@ -13,7 +13,7 @@
    purpose="WIMP – Warrior Index and Metrics Parser"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.5"
+   version="1.51"
    >
 
  <description trim="n">
@@ -455,7 +455,7 @@ end
 plugin_url = "https://raw.githubusercontent.com/KelaireAard/Plugins/refs/heads/main/WIMP.xml"
 SetVariable("DownloadURL", plugin_url)
 plugin_protocol = "HTTPS"
-plugin_prefix = "[BAD]"
+plugin_prefix = "[WIMP]"
 
 function update_check_alias()
     update_plugin("check")
@@ -549,6 +549,7 @@ end
 
 
 </muclient>
+
 
 
 
