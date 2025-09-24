@@ -8,13 +8,14 @@
 <muclient>
 <plugin
    name="Skinner"
-   author="Kelaire"
+   author="Kelaire - fixed by Seekers"
    id="91afa688265806761d5c753b"
    language="Lua"
    purpose="Maybe it can skin?"
    date_written="2022-01-31 19:06:12"
    requires="5.07"
-   version="1.0"
+   version="1.2"
+   save_state="y"
    >
 
 <description trim="n">
@@ -79,7 +80,7 @@
   
    <trigger
    enabled="y"
-   match="^You craft the .* further into: \(\(?(?<bloot>[A-Za-z]+)\)?\)\s(?<item>.*)\.$"
+   match="^You craft the .* further into: \((?<bloot>[A-Za-z]+)\)\s(?<item>.*)\.$"
    regexp="y"
    keep_evaluating="y"
    omit_from_output="n"
@@ -157,6 +158,15 @@
 
 require "serialize"
 require "wait"
+require "commas"
+require "gmcphelper"
+
+skinnerColor = "khaki" --todo: add some ingame method of changing color.
+skinnerWait = 3 -- todo: add handler for this too
+skinnerSmote = true
+skinnerPlayer = gmcp("char.base.name")
+skinnerDropWait = 2
+
 numcorpse = 0
 local tag = "@D[@GSkinner Stats@D] :@w"
 
@@ -202,7 +212,8 @@ end
 
 -- Default Skin Type = "Cloak"
 if (GetVariable("ks_skintype") ~= nil) then
-	skitype = GetVariable("ks_skintype")
+--	skitype = GetVariable("ks_skintype")
+	skintype = GetVariable("ks_skintype")
 else
 	SetVariable("ks_skintype", "cloak")
 	skintype = "cloak"
@@ -219,13 +230,13 @@ end
 
 -- On plugin install ...
 function OnPluginInstall(msg, id, name, text)
-	ColourNote("#0152a1","","[Skinner]: Plugin installed")
-	ColourNote("#0152a1","","[Skinner]: Defaulted to " .. enabled)
-	ColourNote("#0152a1","","[Skinner]: Defaulted to type of " .. skintype)
-	ColourNote("#0152a1","","[Skinner]: Defaulted to auto-preserve " .. preserve)
-	ColourNote("#0152a1","","[Skinner]: Defaulted to auto-drop " .. throwAway)
-	ColourNote("#0152a1","","[Skinner]: Defaulted to auto-bag " .. autobagger)
-	ColourNote("#0152a1","","[Skinner]: Defaulted to storage bag " .. thebag)
+	ColourNote(skinnerColor,"","[Skinner]: Plugin installed")
+	ColourNote(skinnerColor,"","[Skinner]: Defaulted to " .. enabled)
+	ColourNote(skinnerColor,"","[Skinner]: Defaulted to type of " .. skintype)
+	ColourNote(skinnerColor,"","[Skinner]: Defaulted to auto-preserve " .. preserve)
+	ColourNote(skinnerColor,"","[Skinner]: Defaulted to auto-drop " .. throwAway)
+	ColourNote(skinnerColor,"","[Skinner]: Defaulted to auto-bag " .. autobagger)
+	ColourNote(skinnerColor,"","[Skinner]: Defaulted to storage bag " .. thebag)
 	
 	if (GetVariable("ks_data") ~= nil) then
 		-- load saved variables if they exist
@@ -243,6 +254,10 @@ function OnPluginInstall(msg, id, name, text)
 	else
 		resetData()
 	end
+end
+
+function OnPluginSaveState()
+	SetVariable("ks_data", serialize.save_simple(data)) --worky?
 end
 
 function OnPluginBroadcast(msg, id, name, text)
@@ -272,13 +287,14 @@ function lookSend(name, line, args)
 		SendNoEcho("echo {kelskin}")
 		SendNoEcho("look")
 		SendNoEcho("echo {/kelskin}") 
-		wait.time(3)
+		wait.time(skinnerWait)
 	end)
 end
 
 -- Start the capture of the config output
 function startCapture(name, line, args)
 	EnableTriggerGroup("skinnergroup", true)
+	numcorpse=0
 end
 
 -- End the capture of the config output
@@ -306,34 +322,37 @@ function addCorpse(name,line,args)
 		toadd = string.gsub(toadd,"%s+","")
 	end
 	numcorpse = numcorpse + toadd
-	--ColourNote("#0152a1","","toadd: " .. toadd .. "  |  numcorpse: " .. numcorpse)
+	--ColourNote(skinnerColor,"","toadd: " .. toadd .. "  |  numcorpse: " .. numcorpse)
 end
 
 -- Show the help!
 function ShowHelp(name,line,args)
-	ColourNote("#0152a1","","[Skinner]: Kelaire was too lazy to make a nicely formatted help for this...")
-	ColourNote("#0152a1","","[Skinner]: Commands are as follows:")
-	ColourNote("#0152a1","","[Skinner]: skinner enable/disable (to turn on and off)")
-	ColourNote("#0152a1","","[Skinner]: skinner type boots|leggings|sleeves|cloak|gloves|helm")
-	ColourNote("#0152a1","","[Skinner]: skinner auto yes/no (turns on/off auto preserve)")
-	ColourNote("#0152a1","","[Skinner]: skinner drop yes/no (turns on/off auto drop of normal)")
-	ColourNote("#0152a1","","[Skinner]: skinner bag yes/no (turns on/off auto bag of bloot)")
-	ColourNote("#0152a1","","[Skinner]: skinner bag name/id (keyword or id of storage bag)")
-	ColourNote("#0152a1","","[Skinner]: skinner status (shows current setup)")
+	ColourNote(skinnerColor,"","[Skinner]: Kelaire was too lazy to make a nicely formatted help for this...")
+	ColourNote(skinnerColor,"","[Skinner]: Commands are as follows:")
+	ColourNote(skinnerColor,"","[Skinner]: skinner enable/disable (to turn on and off)")
+	ColourNote(skinnerColor,"","[Skinner]: skinner type boots|leggings|sleeves|cloak|gloves|helm")
+	ColourNote(skinnerColor,"","[Skinner]: skinner auto yes/no (turns on/off auto preserve)")
+	ColourNote(skinnerColor,"","[Skinner]: skinner drop yes/no (turns on/off auto drop of normal)")
+	ColourNote(skinnerColor,"","[Skinner]: skinner bag yes/no (turns on/off auto bag of bloot)")
+	ColourNote(skinnerColor,"","[Skinner]: skinner bag name/id (keyword or id of storage bag)")
+	ColourNote(skinnerColor,"","[Skinner]: skinner status (shows current setup)")
 end
 
 -- Do the skinning of the mobs
 function skinMobs()
-	ColourNote("#0152a1","","[Skinner]: Skinning Mobs")
+	ColourNote(skinnerColor,"","[Skinner]: Skinning Mobs")
 	for i=1,numcorpse,1 do
 		SendNoEcho("skin " .. skintype)
 		data.totalskins = data.totalskins + 1
 		
 		-- Check for auto-preserve all
 		if preserve == "yes" then
-			ColourNote("#0152a1","","[Skinner]: Auto-preserving skin...")
+			ColourNote(skinnerColor,"","[Skinner]: Auto-preserving skin...")
 			SendNoEcho("preserve " .. skintype)
 		end
+	end
+	if skinnerSmote then
+		Send("smote @x204T@x211his@x217 @x218room @x224h@x255as@x231 be@x218e@x204n @x211ski@x217n@x218ned by @C" .. skinnerPlayer .. ".@w")
 	end
 end
 
@@ -341,7 +360,7 @@ end
 function skinningDone()
 	if throwAway == "yes" then
 		wait.make (function()
-			wait.time(1)
+			wait.time(skinnerDropWait)
 			SendNoEcho("drop " .. skintype)
 		end)
 	end
@@ -350,53 +369,60 @@ end
 -- Set the type of skin
 function changeType(name,line,args)
 	skintype = args.type
-	ColourNote("#0152a1","","[Skinner]: Type changed to " .. skintype)
+	ColourNote(skinnerColor,"","[Skinner]: Type changed to " .. skintype)
+	SetVariable("ks_skintype",skintype)
 end
 
 -- Set auto-preserve
 function autoPreserve(name,line,args)
 	preserve = string.lower(args.type)
-	ColourNote("#0152a1","","[Skinner]: Auto-Preserve changed to " .. preserve)
+	ColourNote(skinnerColor,"","[Skinner]: Auto-Preserve changed to " .. preserve)
+	SetVariable("ks_preserve",preserve)
 end
 
 -- Set auto-drop
 function autoDrop(name,line,args)
 	throwAway = string.lower(args.type)
-	ColourNote("#0152a1","","[Skinner]: Auto-Drop changed to " .. throwAway)
+	ColourNote(skinnerColor,"","[Skinner]: Auto-Drop changed to " .. throwAway)
+	SetVariable("ks_throwaway",throwAway)
 end
 
 -- Set auto-bag
 function autoBag(name,line,args)
 	autobagger = string.lower(args.type)
-	ColourNote("#0152a1","","[Skinner]: Auto-Bag changed to " .. autobagger)
+	ColourNote(skinnerColor,"","[Skinner]: Auto-Bag changed to " .. autobagger)
+	SetVariable("ks_autobag",autobagger)
 end
 
 -- Set bagname
 function setBag(name,line,args)
 	thebag = string.lower(args.type)
-	ColourNote("#0152a1","","[Skinner]: Storage Bag changed to " .. thebag)
+	ColourNote(skinnerColor,"","[Skinner]: Storage Bag changed to " .. thebag)
+	SetVariable("ks_bag", thebag)
 end
 
 -- Turn skinner on
 function enableSkinner()
 	enabled = "yes"
-	ColourNote("#0152a1","","[Skinner]: Skinner enabled")
+	ColourNote(skinnerColor,"","[Skinner]: Skinner enabled")
+	SetVariable("ks_enabled",enabled)
 end	
 
 -- Turn skinner off
 function disableSkinner()
 	enabled = "no"
-	ColourNote("#0152a1","","[Skinner]: Skinner disabled")
+	ColourNote(skinnerColor,"","[Skinner]: Skinner disabled")
+	SetVariable("ks_enabled",enabled)
 end
 
 -- Show skinner status
 function showStatus()
-	ColourNote("#0152a1","","[Skinner]: Enabled - " .. enabled)
-	ColourNote("#0152a1","","[Skinner]: Type - " .. skintype)
-	ColourNote("#0152a1","","[Skinner]: Auto-Preserve - " .. preserve)
-	ColourNote("#0152a1","","[Skinner]: Auto-Drop - " .. throwAway)
-	ColourNote("#0152a1","","[Skinner]: Auto-Bag - " .. autobagger)
-	ColourNote("#0152a1","","[Skinner]: Storage Bag - " .. thebag)
+	ColourNote(skinnerColor,"","[Skinner]: Enabled - " .. enabled)
+	ColourNote(skinnerColor,"","[Skinner]: Type - " .. skintype)
+	ColourNote(skinnerColor,"","[Skinner]: Auto-Preserve - " .. preserve)
+	ColourNote(skinnerColor,"","[Skinner]: Auto-Drop - " .. throwAway)
+	ColourNote(skinnerColor,"","[Skinner]: Auto-Bag - " .. autobagger)
+	ColourNote(skinnerColor,"","[Skinner]: Storage Bag - " .. thebag)
 end
 
 -- We got bloot!  Let's do things!
@@ -417,17 +443,17 @@ function addBloot(name, line, args)
     data.loot[iType] = tonumber(data.loot[iType]) + 1
     if iType ~= "Normal" then
 		message = "You crafted some bloot!  Type: " .. iType
-		ColourNote("#0152a1","","[Skinner]:" .. message)
+		ColourNote(skinnerColor,"","[Skinner]:" .. message)
 		CallPlugin("b555825a4a5700c35fa80780","storeFromOutside","@x033[Skinner]: @x123" .. message, 1, true, true)
 		Send("keep ".. iType)
 		-- You craft the cloak further into: (Vibrant) a protective cloak skinned from a guard dog.
 		if preserve == "bloot" then
-			ColourNote("#0152a1","","[Skinner]: Auto-preserving skin...")
+			ColourNote(skinnerColor,"","[Skinner]: Auto-preserving skin...")
 			Send("preserve " .. iType)
 		end
 		if autobagger == "yes" then
 			if thebag == nil or thebag == "" then
-				ColourNote("#0152a1","","[Skinner]: You need to set your bag!")
+				ColourNote(skinnerColor,"","[Skinner]: You need to set your bag!")
 			else
 				Send("put " .. iType .. " " .. thebag)
 			end
@@ -438,32 +464,44 @@ function addBloot(name, line, args)
 end
 
 -- Report skinning data
+-- todo: toggle for commas on/off?
 function reportData(name, line, wildcards)
     local tStr = wildcards.channel .. " " .. tag .. " "
-    tStr = tStr .. "@cTotal Skins: @w" .. data.totalskins .. "@c. "
+	local totalBloot = 0
+	local blootReport = ""
+	local sadReport = ""
+    --tStr = tStr .. "@cTotal Skins: @w" .. data.totalskins .. "@c. "
+	tStr = tStr .. "@cTotal Skins: @w" .. commas(data.totalskins) .. "@c. "
     if (data.totalskins - data.lastBonus) == 1 then
-        tStr = tStr .. "@cLast bonus: @w" .. (data.totalskins - data.lastBonus) .. " skin ago@c. "
+        --tStr = tStr .. "@cLast bonus: @w" .. (data.totalskins - data.lastBonus) .. " skin ago@c. "
+		tStr = tStr .. "@cLast bonus: @w" .. (commas(data.totalskins - data.lastBonus)) .. " skin ago@c. "
     else
-        tStr = tStr .. "@cLast bonus: @w" .. (data.totalskins - data.lastBonus) .. " skins ago@c. "
+        --tStr = tStr .. "@cLast bonus: @w" .. (data.totalskins - data.lastBonus) .. " skins ago@c. "
+		tStr = tStr .. "@cLast bonus: @w" .. (commas(data.totalskins - data.lastBonus)) .. " skins ago@c. "
     end
     tStr = tStr .. "@cLoot: @D[@W"
     local tCount = 0
 
 	for k, v in spairs(data.loot, function(t,a,b) return t[a] > t[b] end) do
 		if tCount == 0 then
-			tStr = tStr .. k .. "@c: @G" .. v .. "@c(@C" .. string.format("%.2f%%", (v/data.totalskins)*100) .. "@c)@W"
+			--tStr = tStr .. k .. "@c: @G" .. v .. "@c(@C" .. string.format("%.2f%%", (v/data.totalskins)*100) .. "@c)@W"
+			blootReport = blootReport .. k .. "@c: @G" .. commas(v) .. "@c(@C" .. string.format("%.4f%%", (v/data.totalskins)*100) .. "@c)@W"
 			tCount = tCount + 1
 		else
-			tStr = tStr .. " " .. k .. "@c: @G" .. v .. "@c(@C" .. string.format("%.2f%%", (v/data.totalskins)*100) .. "@c)@W"
+			--tStr = tStr .. " " .. k .. "@c: @G" .. v .. "@c(@C" .. string.format("%.2f%%", (v/data.totalskins)*100) .. "@c)@W"
+			blootReport = blootReport .. " " .. k .. "@c: @G" .. commas(v) .. "@c(@C" .. string.format("%.4f%%", (v/data.totalskins)*100) .. "@c)@W"
 		end
+		totalBloot = totalBloot + v
 	end
-	tStr = tStr .. "@D]@w"
-	Send(tStr)
+	blootReport = blootReport .. "@D]@w"
+
+	sadReport = "@WNormal: @G" .. commas(data.totalskins-totalBloot) .. "@c(@C" .. string.format("%.4f%%", ((data.totalskins-totalBloot)/data.totalskins)*100) .. "@c) @W"
+	Send(tStr .. sadReport .. blootReport)
 end
 
 -- Reset skinning data
 function resetData()
-	ColourNote("#0152a1","","[Skinner]: Resetting Data")
+	ColourNote(skinnerColor,"","[Skinner]: Resetting Data")
 	data = { totalskins = 0, lastBonus = 0, loot = {} }
 	SetVariable("data", serialize.save_simple(data))
 end
@@ -499,7 +537,7 @@ function checkItems()
 	wait.make (function()
 		SendNoEcho("echo {kelinv}")
 		SendNoEcho("inv")
-		SendNoEcho("echo {/kelinv}") 
+		SendNoEcho("echo {/kelinv}")
 		wait.time(1)
 	end)
 end
@@ -527,4 +565,3 @@ end
 </script>
 
 </muclient>
-
