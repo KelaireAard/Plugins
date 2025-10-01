@@ -13,7 +13,7 @@
    purpose="WIMP – Warrior Index and Metrics Parser"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.62"
+   version="1.63"
    >
 
  <description trim="n">
@@ -425,7 +425,9 @@ function groupPowerLevel()
 end
 
 function reportPowerLevel()
-    SendNoEcho("gt @x208Total Group Power Level is @x213" .. format_int(groupPower) .. "@x208. Total SHs in Group is @x213" .. playerCount .. "@x208. Average group power is @x213" .. format_int(groupPower/playerCount) .. "@x208.")
+	avgGroupPower = format_int(groupPower/playerCount)
+	agp = tonumber(string.format("%.2f", avgGroupPower))
+    SendNoEcho("gt @x208Total Group Power Level is @x213" .. format_int(groupPower) .. "@x208. Total SHs in Group is @x213" .. playerCount .. "@x208. Average group power is @x213" .. agp .. "@x208. There are @x213" .. above8 .."@x208 people above 8 power. There are @x213" .. below2 .. " @x208people below 2 power.")
 end
 
 -- Helper Function - Tell the user how this shit works!
