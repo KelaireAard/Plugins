@@ -13,7 +13,7 @@
    purpose="WIMP – Warrior Index and Metrics Parser"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.61"
+   version="1.62"
    >
 
  <description trim="n">
@@ -119,7 +119,7 @@
 	>
   </trigger>
   <trigger
-		enabled="y"
+		enabled="n"
 		name="endSubCapture"
 		group="WIMPCheck"
 		match="^Players found: \[\d+\]\, Max this reboot\: \[\d+\]\, Connections this reboot\: \[\d+\]$"
@@ -171,6 +171,8 @@ local players = {}
 local name_index = {}
 local groupPower = 0
 local playerCount = 0
+local below2 = 0
+local above8 = 0
 
 function sendCommands()
   players = {}
@@ -347,22 +349,22 @@ function calculateEPL()
 	currentLevel = totlevels - (1407 * tier) - ((mort-1) * 201)	
 	if not currentLevel == 201 then ColourNote("RED","","Player " .. playerName .. " is not SH!") end
 	
-	if total_qp >= 2000000 then epicPowerLevel = epicPowerLevel + 3
+	if total_qp >= 2000000 then epicPowerLevel = epicPowerLevel + 2.5
 	elseif total_qp > 1000000 and total_qp < 2000000 then epicPowerLevel = epicPowerLevel + 2
 	elseif total_qp > 500000 and total_qp <= 1000000 then epicPowerLevel = epicPowerLevel + 1
 	end
 	
-	if pup >= 1000000 then epicPowerLevel = epicPowerLevel + 3
+	if pup >= 1000000 then epicPowerLevel = epicPowerLevel + 2.5
 	elseif pup > 500000 and pup < 1000000 then epicPowerLevel = epicPowerLevel + 2
 	elseif pup > 100000 and pup <= 500000 then epicPowerLevel = epicPowerLevel + 1
 	end
 	
-	if totlevels >= 37898 then epicPowerLevel = epicPowerLevel + 3
+	if totlevels >= 37898 then epicPowerLevel = epicPowerLevel + 2.5
 	elseif totlevels > 25326 and totlevels < 37898 then epicPowerLevel = epicPowerLevel + 2
 	elseif totlevels > 14070 and totlevels <= 23526 then epicPowerLevel = epicPowerLevel + 1
 	end
 	
-	if totstats >= 2150 then epicPowerLevel = epicPowerLevel + 3
+	if totstats >= 2150 then epicPowerLevel = epicPowerLevel + 2.5
 	elseif totstats > 2050 and totstats < 2150 then epicPowerLevel = epicPowerLevel + 2
 	elseif totstats > 1950 and totstats <= 2050 then epicPowerLevel = epicPowerLevel + 1
 	end
@@ -406,9 +408,20 @@ function print_players()
 end
 
 function groupPowerLevel()
+    above8 = 0
+	below2 = 0
+	for _, player in ipairs(players) do
+      if player.epl <= 2 then
+        below2 = below2 + 1
+      elseif player.epl > 8 then
+        above8 = above8 + 1
+      end
+    end
 	ColourNote("#34ebcf","","Total Group Power: " .. format_int(groupPower))
 	ColourNote("#34ebcf","","Total SH in Group: " .. playerCount)
 	ColourNote("#34ebcf","","Average Group Power: " .. format_int(groupPower/playerCount))
+	ColourNote("#34ebcf","","Power Below 2: " .. below2)
+	ColourNote("#34ebcf","","Power Above 8: " .. above8)
 end
 
 function reportPowerLevel()
