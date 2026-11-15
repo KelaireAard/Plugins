@@ -11,6 +11,7 @@
    author="Kelaire"
    id="5553dc47019e1cffd349c172"
    language="Lua"
+   save_state="y"
    purpose="Show &quot;PK&quot; statuses in a miniwindow"
    date_written="2022-01-31 19:06:12"
    requires="5.07"
@@ -55,7 +56,7 @@
   
   <trigger
    enabled="n"
-   match="You currently display (?<pageNum>.*) lines per page\."
+   match="You currently display (?&lt;pageNum&gt;.*) lines per page\."
    script="getPageSize"
    regexp="y"
    omit_from_output="y"
@@ -98,7 +99,7 @@
   <trigger
    enabled="n"
    group="pkstatus"
-   match="^NODELIVER\s+Accept deliveries from various stores\s+(?<AutoFlag>YES|NO)(\s*)$"
+   match="^NODELIVER\s+Accept deliveries from various stores\s+(?&lt;AutoFlag&gt;YES|NO)(\s*)$"
    regexp="y"
    script="noDeliverStatus"
    sequence="100"
@@ -107,7 +108,7 @@
   <trigger
    enabled="n"
    group="pkstatus"
-   match="^NOFOLLOW\s+Allow people / mobs to follow you\s+(?<AutoFlag>YES|NO)(\s*)$"
+   match="^NOFOLLOW\s+Allow people / mobs to follow you\s+(?&lt;AutoFlag&gt;YES|NO)(\s*)$"
    regexp="y"
    script="noFolStatus"
    sequence="100"
@@ -116,7 +117,7 @@
   <trigger
    enabled="n"
    group="pkstatus"
-   match="^PKOFF\s+Can attack other players\.\s+(?<AutoFlag>YES|NO)(\s*)$"
+   match="^PKOFF\s+Can attack other players\.\s+(?&lt;AutoFlag&gt;YES|NO)(\s*)$"
    regexp="y"
    script="pkOffStatus"
    sequence="100"
@@ -125,7 +126,7 @@
   <trigger
    enabled="n"
    group="pkstatus"
-   match="^NOGIVE\s+Allow other players to give items to you\s+(?<AutoFlag>YES|NO)(\s*)$"
+   match="^NOGIVE\s+Allow other players to give items to you\s+(?&lt;AutoFlag&gt;YES|NO)(\s*)$"
    regexp="y"
    script="noGiveStatus"
    sequence="100"
@@ -134,7 +135,7 @@
   <trigger
    enabled="n"
    group="pkstatus"
-   match="^NOSUMMON\s+Allow people to summon you / gate to you\s+(?<AutoFlag>YES|NO)(\s*)$"
+   match="^NOSUMMON\s+Allow people to summon you / gate to you\s+(?&lt;AutoFlag&gt;YES|NO)(\s*)$"
    regexp="y"
    script="noSumStatus"
    sequence="100"
@@ -242,6 +243,8 @@
 	<alias script="ShowWindow" match="^pkx show$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
 	<alias script="HideWindow" match="^pkx hide$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
 	<alias script="ResetWindow" match="^pkx reset$" enabled="y" regexp="y" sequence="100" ignore_case="y"></alias>
+
+  <alias script="PositionDebug" match="^pkx position$" enabled="y" regexp="y" ignore_case="y" sequence="100" />
 </aliases>
 
 
@@ -256,6 +259,7 @@ require "wait"
 local z_order_plugin = "462b665ecb569efbf261422f"
 local dragStart = nil	
 local window = {}
+local WINDOW_STATE_KEY = "pkstatuswindow"
 local colours = {
 	header = "#474747",
 }
@@ -264,16 +268,31 @@ local currentPageSize = 0
 
 -- On install, reset, get data, and draw the window.
 function OnPluginInstall()
-	setDefaults()
-
-	if (GetVariable("pkstatuswindow") ~= nil) then	-- load saved variables if they exist
-		luastmt = "obj = " .. GetVariable("pkstatuswindow")
-		assert (loadstring (luastmt or "")) ()		
-		window = obj
-	else
-		SetWindowDefaults() -- load window defaults
-	end					
-	InitializeWindow()
+    setDefaults()
+    SetWindowDefaults()
+    -- Prefer individual saved coordinates. Fall back to the legacy table once.
+    local x = tonumber(GetVariable("position_x"))
+    local y = tonumber(GetVariable("position_y"))
+    if x and y then
+        window.left, window.top = x, y
+        window.width = tonumber(GetVariable("position_width")) or window.width
+        window.height = tonumber(GetVariable("position_height")) or window.height
+        local visible = GetVariable("position_visible")
+        if visible ~= nil then window.show = (visible == "1") end
+    else
+        local saved = GetVariable(WINDOW_STATE_KEY)
+        if saved and saved ~= "" then
+            local f = loadstring("return " .. saved)
+            if f then
+                local ok, old = pcall(f)
+                if ok and type(old) == "table" then
+                    for k, v in pairs(old) do window[k] = v end
+                end
+            end
+        end
+    end
+    window.id = "window_" .. GetPluginID()
+    InitializeWindow()
 end
 
 function OnPluginBroadcast (msg, id, name, text)
@@ -294,11 +313,17 @@ function OnPluginConnect()
 end
 
 function OnPluginDisable()
-	HideWindow()
+    SaveWindow()
+    if window.id then WindowShow(window.id, false) end
 end
 
 function OnPluginClose()
-    OnPluginDisable()
+    SaveWindow()
+end
+
+function OnPluginSaveState()
+    -- Never call SaveState() here: this callback is invoked by SaveState().
+    WriteWindowVariables()
 end
 
 function getPageSize(name, line, args)
@@ -329,9 +354,9 @@ end
 
 -- Initialize the Window
 function InitializeWindow()
-	WindowCreate(window.id, window.left, window.top, window.width, window.height, miniwin.pos_center_all, miniwin.create_keep_hotspots, ColourNameToRGB(window.backgroundColor))
+	WindowCreate(window.id, window.left, window.top, window.width, window.height, miniwin.pos_top_left, bit.bor(miniwin.create_keep_hotspots, miniwin.create_absolute_location), ColourNameToRGB(window.backgroundColor))
 	WindowFont(window.id, window.font, window.fontFamily, window.fontSize, false, false, false, false, 1, 0)
-	WindowPosition(window.id, window.left, window.top, miniwin.pos_stretch_to_view, miniwin.create_absolute_location)	
+	WindowPosition(window.id, window.left, window.top, miniwin.pos_top_left, miniwin.create_absolute_location)	
 
 	if (window.show) then
 		WindowShow(window.id, window.show)				
@@ -391,9 +416,27 @@ function ResetWindow()
 end
 
 -- Save save save!
+function PositionDebug()
+    ColourNote("cyan", "black", "Window live: " .. tostring(WindowInfo(window.id, 10)) .. ", " .. tostring(WindowInfo(window.id, 11)))
+    ColourNote("cyan", "black", "Window memory: " .. tostring(window.left) .. ", " .. tostring(window.top))
+    ColourNote("cyan", "black", "Window saved: " .. tostring(GetVariable("position_x")) .. ", " .. tostring(GetVariable("position_y")))
+end
+
+function WriteWindowVariables()
+    SetVariable("position_x", tostring(window.left))
+    SetVariable("position_y", tostring(window.top))
+    SetVariable("position_width", tostring(window.width))
+    SetVariable("position_height", tostring(window.height))
+    SetVariable("position_visible", window.show and "1" or "0")
+end
+
 function SaveWindow()
-	SetVariable("pkstatuswindow", serialize.save_simple(window))
-end	
+    WriteWindowVariables()
+    local result = SaveState()
+    if result ~= 0 then
+        ColourNote("white", "red", "[Window Position] SaveState failed: " .. tostring(result))
+    end
+end
 
 -- Let's do the thing and draw the window!
 function Draw(win)
